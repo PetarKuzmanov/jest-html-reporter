@@ -9,6 +9,13 @@ var xmlbuilder = _interopDefault(require('xmlbuilder'));
 var dateformat = _interopDefault(require('dateformat'));
 var stripAnsi = _interopDefault(require('strip-ansi'));
 
+module.exports = require('./lib/mocha');
+
+
+var mocha = Object.freeze({
+
+});
+
 function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
@@ -623,6 +630,15 @@ var config_14 = config_1.getTheme;
 var config_15 = config_1.getDateFormat;
 var config_16 = config_1.getSort;
 
+var require$$0 = ( mocha && undefined ) || mocha;
+
+/* eslint no-restricted-syntax: ["error", "FunctionExpression", "WithStatement", "BinaryExpression[operator='in']"] */
+/* eslint prefer-destructuring: ["error", {AssignmentExpression: {array: true}}] */
+
+const Base = require$$0.reporters.Base;
+
+
+
 function JestHtmlReporter(globalConfig, options) {
 	// Initiate the config and setup the Generator class
 	config_1.setup();
@@ -649,14 +665,89 @@ function JestHtmlReporter(globalConfig, options) {
 	this.jestConfig = globalConfig;
 	this.jestOptions = options;
 
-	this.onRunComplete = (contexts, testResult) => {
-		// Apply the configuration within jest.config.json to the current config
-		config_1.setConfigData(this.jestOptions);
-		// Apply the updated config
-		reportGenerator$$1.config = config_1;
-		// Generate Report
-		return reportGenerator$$1.generate({ data: testResult });
-	};
+	const startTime = Date.now();
+	if (!this.jestOptions || !this.jestOptions.framework || this.jestOptions.framework === 'jest') {
+		this.onRunComplete = (contexts, testResult) => {
+			// Apply the configuration within jest.config.json to the current config
+			config_1.setConfigData(this.jestOptions);
+			// Apply the updated config
+			reportGenerator$$1.config = config_1;
+			// Generate Report
+			return reportGenerator$$1.generate({ data: testResult });
+		};
+	} else {
+		// if the framework is mocha
+		Base.call(this, this.jestConfig);
+
+		this.jestConfig.on('end', () => {
+			const testResult = {
+				numFailedTests: 0,
+				numFailedTestSuites: 0,
+				numPassedTests: 0,
+				numPassedTestSuites: 0,
+				numPendingTests: 0,
+				numPendingTestSuites: 0,
+				numRuntimeErrorTestSuites: 0,
+				numTodoTests: 0,
+				numTotalTests: 0,
+				numTotalTestSuites: 0,
+				openHandles: [],
+				snapshot: {},
+				startTime,
+				success: false,
+				testResults: [],
+				wasInterrupted: false,
+			};
+
+			const suites = this.jestConfig.suite.suites;
+			for (const suite of suites) {
+				const suitItem = {
+					console: [],
+					coverage: undefined,
+					displayName: undefined,
+					failureMessage: null,
+					leaks: false,
+					numFailingTests: 0,
+					numPassingTests: 0,
+					numPendingTests: 0,
+					numTodoTests: 0,
+					perfStats: { end: 1551796103758, start: 1551796100962 },
+					skipped: true,
+					snapshot: {},
+					sourceMaps: {},
+					testFilePath: suite.file,
+					testResults: [],
+				};
+				for (const test of suite.tests) {
+					const testItem = {
+						ancestorTitles: [suite.title],
+						duration: 0,
+						failureMessages: [],
+						fullName: suite.title + test.title,
+						location: null,
+						numPassingAsserts: 0,
+						status: !test.state ? 'pending' : test.state,
+						title: test.title,
+					};
+					if (!test.state) {
+						testResult.numPendingTests += 1;
+					} else if (test.state === 'passed') {
+						testResult.numPassedTests += 1;
+					} else if (test.state === 'failed') {
+						testResult.numFailedTests += 1;
+						testItem.failureMessages.push(test.err.stack);
+					}
+					testResult.numTotalTests += 1;
+					suitItem.testResults.push(testItem);
+				}
+				testResult.numTotalTestSuites += 1;
+				testResult.testResults.push(suitItem);
+			}
+			testResult.success = testResult.numFailedTests === 0;
+
+			return reportGenerator$$1.generate({ data: testResult });
+		});
+	}
 }
 
 var src = JestHtmlReporter;
