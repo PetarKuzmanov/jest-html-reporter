@@ -1,88 +1,83 @@
-'use strict';
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var fs = _interopDefault(require('fs'));
-var path = _interopDefault(require('path'));
-var mkdirp = _interopDefault(require('mkdirp'));
-var xmlbuilder = _interopDefault(require('xmlbuilder'));
-var dateformat = _interopDefault(require('dateformat'));
-var stripAnsi = _interopDefault(require('strip-ansi'));
-
-module.exports = require('./lib/mocha');
 
 
-var mocha = Object.freeze({
+function _interopDefault(ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex.default : ex; }
 
-});
+const fs = _interopDefault(require('fs'));
+const path = _interopDefault(require('path'));
+const mkdirp = _interopDefault(require('mkdirp'));
+const xmlbuilder = _interopDefault(require('xmlbuilder'));
+const dateformat = _interopDefault(require('dateformat'));
+const stripAnsi = _interopDefault(require('strip-ansi'));
+
+const Base = require('mocha').reporters.Base;
 
 function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
 
-var utils = createCommonjsModule(function (module) {
+const utils = createCommonjsModule((module) => {
 /**
  * Logs a message of a given type in the terminal
  * @param {String} type
  * @param {String} msg
  * @return {Object}
  */
-const logMessage = ({ type, msg, ignoreConsole }) => {
-	const logTypes = {
-		default: '\x1b[37m%s\x1b[0m',
-		success: '\x1b[32m%s\x1b[0m',
-		error: '\x1b[31m%s\x1b[0m',
-	};
-	const logColor = (!logTypes[type]) ? logTypes.default : logTypes[type];
-	const logMsg = `jest-html-reporter >> ${msg}`;
-	if (!ignoreConsole) {
+	const logMessage = ({ type, msg, ignoreConsole }) => {
+		const logTypes = {
+			default: '\x1b[37m%s\x1b[0m',
+			success: '\x1b[32m%s\x1b[0m',
+			error: '\x1b[31m%s\x1b[0m',
+		};
+		const logColor = (!logTypes[type]) ? logTypes.default : logTypes[type];
+		const logMsg = `jest-html-reporter >> ${msg}`;
+		if (!ignoreConsole) {
 		console.log(logColor, logMsg); // eslint-disable-line
-	}
-	return { logColor, logMsg }; // Return for testing purposes
-};
+		}
+		return { logColor, logMsg }; // Return for testing purposes
+	};
 
-/**
+	/**
  * Creates a file at the given destination
  * @param  {String} filePath
  * @param  {Any} 	content
  */
-const writeFile = ({ filePath, content }) => new Promise((resolve, reject) => {
-	mkdirp(path.dirname(filePath), (mkdirpError) => {
-		if (mkdirpError) {
-			return reject(new Error(`Something went wrong when creating the folder: ${mkdirpError}`));
-		}
-		return fs.writeFile(filePath, content, (writeFileError) => {
-			if (writeFileError) {
-				return reject(new Error(`Something went wrong when creating the file: ${writeFileError}`));
+	const writeFile = ({ filePath, content }) => new Promise((resolve, reject) => {
+		mkdirp(path.dirname(filePath), (mkdirpError) => {
+			if (mkdirpError) {
+				return reject(new Error(`Something went wrong when creating the folder: ${mkdirpError}`));
 			}
-			return resolve(filePath);
+			return fs.writeFile(filePath, content, (writeFileError) => {
+				if (writeFileError) {
+					return reject(new Error(`Something went wrong when creating the file: ${writeFileError}`));
+				}
+				return resolve(filePath);
+			});
 		});
 	});
-});
 
-/**
+	/**
  * Sets up a basic HTML page to apply the content to
  * @return {xmlbuilder}
  */
-const createHtmlBase = ({ pageTitle, stylesheet, stylesheetPath }) => {
-	const htmlBase = {
-		html: {
-			head: {
-				meta: { '@charset': 'utf-8' },
-				title: { '#text': pageTitle },
+	const createHtmlBase = ({ pageTitle, stylesheet, stylesheetPath }) => {
+		const htmlBase = {
+			html: {
+				head: {
+					meta: { '@charset': 'utf-8' },
+					title: { '#text': pageTitle },
+				},
 			},
-		},
-	};
+		};
 
-	if (stylesheetPath) {
-		htmlBase.html.head.link = { '@rel': 'stylesheet', '@type': 'text/css', '@href': stylesheetPath };
-	} else {
-		const styleSheet = stylesheet.replace(/(\r\n|\n|\r)/gm, '');
-		htmlBase.html.head.style = { '@type': 'text/css', '#text': styleSheet };
-	}
+		if (stylesheetPath) {
+			htmlBase.html.head.link = { '@rel': 'stylesheet', '@type': 'text/css', '@href': stylesheetPath };
+		} else {
+			const styleSheet = stylesheet.replace(/(\r\n|\n|\r)/gm, '');
+			htmlBase.html.head.style = { '@type': 'text/css', '#text': styleSheet };
+		}
 
-	htmlBase.html.script = {
-		'#text': 'function showHide(item){' +
+		htmlBase.html.script = {
+			'#text': 'function showHide(item){' +
 		'var element = document.getElementById(item); ' +
 		'if (element.style.display === "block")' +
 		'{ element.style.display = "none";' +
@@ -94,35 +89,37 @@ const createHtmlBase = ({ pageTitle, stylesheet, stylesheetPath }) => {
 		'if (element.style.display === "block")' +
 		'{ element.style.display = "none";' +
 		'} else { ' +
-		'element.style.display = "block"; }}}',
+		'element.style.display = "block"; }}}' +
+		'function showHideSuite(tableId, consoleLogId){' +
+		'showHide(tableId); showHide(consoleLogId);}',
+		};
+
+		return xmlbuilder.create(htmlBase);
 	};
 
-	return xmlbuilder.create(htmlBase);
-};
+	const sortAlphabetically = ({ a, b, reversed }) => {
+		if ((!reversed && a < b) || (reversed && a > b)) {
+			return -1;
+		} else if ((!reversed && a > b) || (reversed && a < b)) {
+			return 1;
+		}
+		return 0;
+	};
 
-const sortAlphabetically = ({ a, b, reversed }) => {
-	if ((!reversed && a < b) || (reversed && a > b)) {
-		return -1;
-	} else if ((!reversed && a > b) || (reversed && a < b)) {
-		return 1;
-	}
-	return 0;
-};
-
-module.exports = {
-	logMessage,
-	writeFile,
-	createHtmlBase,
-	sortAlphabetically,
-};
+	module.exports = {
+		logMessage,
+		writeFile,
+		createHtmlBase,
+		sortAlphabetically,
+	};
 });
 
-var utils_1 = utils.logMessage;
-var utils_2 = utils.writeFile;
-var utils_3 = utils.createHtmlBase;
-var utils_4 = utils.sortAlphabetically;
+const utils_1 = utils.logMessage;
+const utils_2 = utils.writeFile;
+const utils_3 = utils.createHtmlBase;
+const utils_4 = utils.sortAlphabetically;
 
-var sorting = createCommonjsModule(function (module) {
+const sorting = createCommonjsModule((module) => {
 /**
  * Splits test suites apart based on individual test status and sorts by that status:
  * 1. Pending
@@ -130,140 +127,140 @@ var sorting = createCommonjsModule(function (module) {
  * 3. Passed
  * @param {Array} suiteResults
  */
-const byStatus = (suiteResults) => {
-	const pendingSuites = [];
-	const failingSuites = [];
-	const passingSuites = [];
+	const byStatus = (suiteResults) => {
+		const pendingSuites = [];
+		const failingSuites = [];
+		const passingSuites = [];
 
-	suiteResults.forEach((suiteResult) => {
-		const pending = [];
-		const failed = [];
-		const passed = [];
+		suiteResults.forEach((suiteResult) => {
+			const pending = [];
+			const failed = [];
+			const passed = [];
 
-		suiteResult.testResults.forEach((x) => {
-			if (x.status === 'pending') {
-				pending.push(x);
-			} else if (x.status === 'failed') {
-				failed.push(x);
-			} else {
-				passed.push(x);
+			suiteResult.testResults.forEach((x) => {
+				if (x.status === 'pending') {
+					pending.push(x);
+				} else if (x.status === 'failed') {
+					failed.push(x);
+				} else {
+					passed.push(x);
+				}
+			});
+
+			if (pending.length) {
+				pendingSuites.push(Object.assign({}, suiteResult, { testResults: pending }));
+			}
+			if (failed.length) {
+				failingSuites.push(Object.assign({}, suiteResult, { testResults: failed }));
+			}
+			if (passed.length) {
+				passingSuites.push(Object.assign({}, suiteResult, { testResults: passed }));
 			}
 		});
 
-		if (pending.length) {
-			pendingSuites.push(Object.assign({}, suiteResult, { testResults: pending }));
-		}
-		if (failed.length) {
-			failingSuites.push(Object.assign({}, suiteResult, { testResults: failed }));
-		}
-		if (passed.length) {
-			passingSuites.push(Object.assign({}, suiteResult, { testResults: passed }));
-		}
-	});
+		return [].concat(pendingSuites, failingSuites, passingSuites);
+	};
 
-	return [].concat(pendingSuites, failingSuites, passingSuites);
-};
-
-/**
+	/**
  * Sorts by Execution Time | Descending
  * @param {Array} suiteResults
  */
-const byExecutionDesc = (suiteResults) => {
-	if (suiteResults) {
-		suiteResults.sort((a, b) =>
-			(b.perfStats.end - b.perfStats.start) - (a.perfStats.end - a.perfStats.start));
-	}
-	return suiteResults;
-};
+	const byExecutionDesc = (suiteResults) => {
+		if (suiteResults) {
+			suiteResults.sort((a, b) =>
+				(b.perfStats.end - b.perfStats.start) - (a.perfStats.end - a.perfStats.start));
+		}
+		return suiteResults;
+	};
 
-/**
+	/**
  * Sorts by Execution Time | Ascending
  * @param {Array} suiteResults
  */
-const byExecutionAsc = (suiteResults) => {
-	if (suiteResults) {
-		suiteResults.sort((a, b) =>
-			(a.perfStats.end - a.perfStats.start) - (b.perfStats.end - b.perfStats.start));
-	}
-	return suiteResults;
-};
+	const byExecutionAsc = (suiteResults) => {
+		if (suiteResults) {
+			suiteResults.sort((a, b) =>
+				(a.perfStats.end - a.perfStats.start) - (b.perfStats.end - b.perfStats.start));
+		}
+		return suiteResults;
+	};
 
-/**
+	/**
  * Sorts by Suite filename and Test name | Descending
  * @param {Array} suiteResults
  */
-const byTitleDesc = (suiteResults) => {
-	if (suiteResults) {
+	const byTitleDesc = (suiteResults) => {
+		if (suiteResults) {
 		// Sort Suites
-		const sorted = suiteResults.sort((a, b) =>
-			utils.sortAlphabetically({ a: a.testFilePath, b: b.testFilePath, reversed: true }));
-		// Sort Suite testResults
-		sorted.forEach((suite) => {
-			suite.testResults.sort((a, b) =>
-				utils.sortAlphabetically({
-					a: a.ancestorTitles.join(' '),
-					b: b.ancestorTitles.join(' '),
-					reversed: true,
-				}));
-		});
-		return sorted;
-	}
-	return suiteResults;
-};
+			const sorted = suiteResults.sort((a, b) =>
+				utils.sortAlphabetically({ a: a.testFilePath, b: b.testFilePath, reversed: true }));
+			// Sort Suite testResults
+			sorted.forEach((suite) => {
+				suite.testResults.sort((a, b) =>
+					utils.sortAlphabetically({
+						a: a.ancestorTitles.join(' '),
+						b: b.ancestorTitles.join(' '),
+						reversed: true,
+					}));
+			});
+			return sorted;
+		}
+		return suiteResults;
+	};
 
-/**
+	/**
  * Sorts by Suite filename and Test name | Ascending
  * @param {Array} suiteResults
  */
-const byTitleAsc = (suiteResults) => {
-	if (suiteResults) {
+	const byTitleAsc = (suiteResults) => {
+		if (suiteResults) {
 		// Sort Suites
-		const sorted = suiteResults.sort((a, b) =>
-			utils.sortAlphabetically({ a: a.testFilePath, b: b.testFilePath }));
-		// Sort Suite testResults
-		sorted.forEach((suite) => {
-			suite.testResults.sort((a, b) =>
-				utils.sortAlphabetically({
-					a: a.ancestorTitles.join(' '),
-					b: b.ancestorTitles.join(' '),
-				}));
-		});
-		return sorted;
-	}
-	return suiteResults;
-};
+			const sorted = suiteResults.sort((a, b) =>
+				utils.sortAlphabetically({ a: a.testFilePath, b: b.testFilePath }));
+			// Sort Suite testResults
+			sorted.forEach((suite) => {
+				suite.testResults.sort((a, b) =>
+					utils.sortAlphabetically({
+						a: a.ancestorTitles.join(' '),
+						b: b.ancestorTitles.join(' '),
+					}));
+			});
+			return sorted;
+		}
+		return suiteResults;
+	};
 
-/**
+	/**
  * Sorts test suite results with the given method
  * @param {Object} testData
  * @param {String} sortMethod
  */
-const sortSuiteResults = ({ testData, sortMethod }) => {
-	if (sortMethod) {
-		switch (sortMethod.toLowerCase()) {
-			case 'status':
-				return byStatus(testData);
-			case 'executiondesc':
-				return byExecutionDesc(testData);
-			case 'executionasc':
-				return byExecutionAsc(testData);
-			case 'titledesc':
-				return byTitleDesc(testData);
-			case 'titleasc':
-				return byTitleAsc(testData);
-			default:
-				return testData;
+	const sortSuiteResults = ({ testData, sortMethod }) => {
+		if (sortMethod) {
+			switch (sortMethod.toLowerCase()) {
+				case 'status':
+					return byStatus(testData);
+				case 'executiondesc':
+					return byExecutionDesc(testData);
+				case 'executionasc':
+					return byExecutionAsc(testData);
+				case 'titledesc':
+					return byTitleDesc(testData);
+				case 'titleasc':
+					return byTitleAsc(testData);
+				default:
+					return testData;
+			}
 		}
-	}
-	return testData;
-};
+		return testData;
+	};
 
-module.exports = {
-	sortSuiteResults,
-};
+	module.exports = {
+		sortSuiteResults,
+	};
 });
 
-var sorting_1 = sorting.sortSuiteResults;
+const sorting_1 = sorting.sortSuiteResults;
 
 class ReportGenerator {
 	constructor(config) {
@@ -377,12 +374,16 @@ class ReportGenerator {
 
 			// Test Suites
 			let index = 0;
+			let suiteIndex = 0;
 			sortedTestData.forEach((suite) => {
 				if (!suite.testResults || suite.testResults.length <= 0) { return; }
 				if (!suite.testResults.find(test => test.status === 'failed')) { return; }
 
+				const suiteTableId = `suite-table-${suiteIndex}`;
+				const suiteConsoleLogId = `suite-consolelog-${suiteIndex}`;
+				suiteIndex += 1;
 				// Suite Information
-				const suiteInfo = htmlOutput.ele('div', { class: 'suite-info' });
+				const suiteInfo = htmlOutput.ele('div', { class: 'suite-info', onclick: `showHideSuite('${suiteTableId}','${suiteConsoleLogId}')` });
 				// Suite Path
 				suiteInfo.ele('div', { class: 'suite-path' }, suite.testFilePath);
 				// Suite execution time
@@ -390,7 +391,9 @@ class ReportGenerator {
 				suiteInfo.ele('div', { class: `suite-time${executionTime > 5 ? ' warn' : ''}` }, `${executionTime}s`);
 
 				// Suite Test Table
-				const suiteTable = htmlOutput.ele('table', { class: 'suite-table', cellspacing: '0', cellpadding: '0' });
+				const suiteTable = htmlOutput.ele('table', {
+					class: 'suite-table', cellspacing: '0', cellpadding: '0', id: `${suiteTableId}`,
+				});
 
 				// Test Results
 				const failedTests = suite.testResults.map(test => test.status === 'failed');
@@ -421,7 +424,7 @@ class ReportGenerator {
 				// Test Suite console.logs
 				if (suite.console && suite.console.length > 0 && (this.config.shouldIncludeConsoleLog())) {
 					// Console Log Container
-					const consoleLogContainer = htmlOutput.ele('div', { class: 'suite-consolelog' });
+					const consoleLogContainer = htmlOutput.ele('div', { class: 'suite-consolelog', id: `${suiteConsoleLogId}` });
 					// Console Log Header
 					const consoleLogHeader = consoleLogContainer.ele('div', { class: 'suite-consolelog-header' }, 'Console Log');
 					consoleLogHeader.ele('button', { class: 'suite-consolelog-show-hide-all', onclick: 'showHideAll()' }, stripAnsi('Show/Hide All'));
@@ -480,163 +483,158 @@ class ReportGenerator {
 	}
 }
 
-var reportGenerator = ReportGenerator;
+const reportGenerator = ReportGenerator;
 
-var config_1 = createCommonjsModule(function (module) {
+const config_1 = createCommonjsModule((module) => {
 // Initialize an empty config object
-const config = {};
+	const config = {};
 
-/**
+	/**
  * Assigns the given data to the config object
  * @param {Object} data
  */
-const setConfigData = data => Object.assign(config, data);
+	const setConfigData = data => Object.assign(config, data);
 
-const setup = () => {
+	const setup = () => {
 	// Attempt to locate and assign configurations from jesthtmlreporter.config.json
-	try {
-		const jesthtmlreporterconfig = fs.readFileSync(path.join(process.cwd(), 'jesthtmlreporter.config.json'), 'utf8');
-		if (jesthtmlreporterconfig) {
-			return setConfigData(JSON.parse(jesthtmlreporterconfig));
-		}
-	} catch (e) { /** do nothing */ }
-	// Attempt to locate and assign configurations from package.json
-	try {
-		const packageJson = fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8');
-		if (packageJson) {
-			return setConfigData(JSON.parse(packageJson)['jest-html-reporter']);
-		}
-	} catch (e) { /** do nothing */ }
-	return config;
-};
+		try {
+			const jesthtmlreporterconfig = fs.readFileSync(path.join(process.cwd(), 'jesthtmlreporter.config.json'), 'utf8');
+			if (jesthtmlreporterconfig) {
+				return setConfigData(JSON.parse(jesthtmlreporterconfig));
+			}
+		} catch (e) { /** do nothing */ }
+		// Attempt to locate and assign configurations from package.json
+		try {
+			const packageJson = fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8');
+			if (packageJson) {
+				return setConfigData(JSON.parse(packageJson)['jest-html-reporter']);
+			}
+		} catch (e) { /** do nothing */ }
+		return config;
+	};
 
-/**
+	/**
  * Returns the output path for the test report
  * @return {String}
  */
-const getOutputFilepath = () =>
-	process.env.JEST_HTML_REPORTER_OUTPUT_PATH || config.outputPath || path.join(process.cwd(), 'test-report.html');
+	const getOutputFilepath = () =>
+		process.env.JEST_HTML_REPORTER_OUTPUT_PATH || config.outputPath || path.join(process.cwd(), 'test-report.html');
 
-/**
+	/**
  * Returns the configured name of theme to be used for styling the report
  * @return {String}
  */
-const getTheme = () =>
-	process.env.JEST_HTML_REPORTER_THEME || config.theme || 'defaultTheme';
+	const getTheme = () =>
+		process.env.JEST_HTML_REPORTER_THEME || config.theme || 'defaultTheme';
 
-/**
+	/**
  * Returns the style-override path for the test report
  * @return {String}
  */
-const getStylesheetFilepath = () =>
-	process.env.JEST_HTML_REPORTER_STYLE_OVERRIDE_PATH || config.styleOverridePath || path.join(__dirname, `../style/${getTheme()}.css`);
+	const getStylesheetFilepath = () =>
+		process.env.JEST_HTML_REPORTER_STYLE_OVERRIDE_PATH || config.styleOverridePath || path.join(__dirname, `../style/${getTheme()}.css`);
 
-/**
+	/**
  * Returns the Custom Script path that should be injected into the test report
  * @return {String}
  */
-const getCustomScriptFilepath = () =>
-	process.env.JEST_HTML_REPORTER_CUSTOM_SCRIPT_PATH || config.customScriptPath || null;
+	const getCustomScriptFilepath = () =>
+		process.env.JEST_HTML_REPORTER_CUSTOM_SCRIPT_PATH || config.customScriptPath || null;
 
-/**
+	/**
  * Returns the configured test report title
  * @return {String}
  */
-const getPageTitle = () =>
-	process.env.JEST_HTML_REPORTER_PAGE_TITLE || config.pageTitle || 'Test report';
+	const getPageTitle = () =>
+		process.env.JEST_HTML_REPORTER_PAGE_TITLE || config.pageTitle || 'Test report';
 
-/**
+	/**
  * Returns the configured logo image path
  * @return {String}
  */
-const getLogo = () =>
-	process.env.JEST_HTML_REPORTER_LOGO || config.logo || null;
+	const getLogo = () =>
+		process.env.JEST_HTML_REPORTER_LOGO || config.logo || null;
 
-/**
+	/**
  * Returns whether the report should contain failure messages or not
  * @return {Boolean}
  */
-const shouldIncludeFailureMessages = () =>
-	process.env.JEST_HTML_REPORTER_INCLUDE_FAILURE_MSG || config.includeFailureMsg || false;
+	const shouldIncludeFailureMessages = () =>
+		process.env.JEST_HTML_REPORTER_INCLUDE_FAILURE_MSG || config.includeFailureMsg || false;
 
-/**
+	/**
  * Returns whether the report should contain console.logs or not
  * @return {Boolean}
  */
-const shouldIncludeConsoleLog = () =>
-	process.env.JEST_HTML_REPORTER_INCLUDE_CONSOLE_LOG || config.includeConsoleLog || false;
+	const shouldIncludeConsoleLog = () =>
+		process.env.JEST_HTML_REPORTER_INCLUDE_CONSOLE_LOG || config.includeConsoleLog || false;
 
-/**
+	/**
  * Returns whether the report should use a dedicated .css file
  * @return {Boolean}
  */
-const shouldUseCssFile = () =>
-	process.env.JEST_HTML_REPORTER_USE_CSS_FILE || config.useCssFile || false;
+	const shouldUseCssFile = () =>
+		process.env.JEST_HTML_REPORTER_USE_CSS_FILE || config.useCssFile || false;
 
-/**
+	/**
  * Returns the configured threshold (in seconds) when to apply a warning
  * @return {Number}
  */
-const getExecutionTimeWarningThreshold = () =>
-	process.env.JEST_HTML_REPORTER_EXECUTION_TIME_WARNING_THRESHOLD || config.executionTimeWarningThreshold || 5;
+	const getExecutionTimeWarningThreshold = () =>
+		process.env.JEST_HTML_REPORTER_EXECUTION_TIME_WARNING_THRESHOLD || config.executionTimeWarningThreshold || 5;
 
-/**
+	/**
  * Returns the configured date/time format.
  * Uses DateFormat - https://github.com/felixge/node-dateformat
  * @return {String}
  */
-const getDateFormat = () =>
-	process.env.JEST_HTML_REPORTER_DATE_FORMAT || config.dateFormat || 'yyyy-mm-dd HH:MM:ss';
+	const getDateFormat = () =>
+		process.env.JEST_HTML_REPORTER_DATE_FORMAT || config.dateFormat || 'yyyy-mm-dd HH:MM:ss';
 
-/**
+	/**
  * Returns the configured sorting method
  * @return {String}
  */
-const getSort = () =>
-	process.env.JEST_HTML_REPORTER_SORT || config.sort || 'default';
+	const getSort = () =>
+		process.env.JEST_HTML_REPORTER_SORT || config.sort || 'default';
 
-module.exports = {
-	config,
-	setup,
-	setConfigData,
-	getOutputFilepath,
-	getStylesheetFilepath,
-	getCustomScriptFilepath,
-	getPageTitle,
-	getLogo,
-	shouldIncludeFailureMessages,
-	shouldIncludeConsoleLog,
-	shouldUseCssFile,
-	getExecutionTimeWarningThreshold,
-	getTheme,
-	getDateFormat,
-	getSort,
-};
+	module.exports = {
+		config,
+		setup,
+		setConfigData,
+		getOutputFilepath,
+		getStylesheetFilepath,
+		getCustomScriptFilepath,
+		getPageTitle,
+		getLogo,
+		shouldIncludeFailureMessages,
+		shouldIncludeConsoleLog,
+		shouldUseCssFile,
+		getExecutionTimeWarningThreshold,
+		getTheme,
+		getDateFormat,
+		getSort,
+	};
 });
 
-var config_2 = config_1.config;
-var config_3 = config_1.setup;
-var config_4 = config_1.setConfigData;
-var config_5 = config_1.getOutputFilepath;
-var config_6 = config_1.getStylesheetFilepath;
-var config_7 = config_1.getCustomScriptFilepath;
-var config_8 = config_1.getPageTitle;
-var config_9 = config_1.getLogo;
-var config_10 = config_1.shouldIncludeFailureMessages;
-var config_11 = config_1.shouldIncludeConsoleLog;
-var config_12 = config_1.shouldUseCssFile;
-var config_13 = config_1.getExecutionTimeWarningThreshold;
-var config_14 = config_1.getTheme;
-var config_15 = config_1.getDateFormat;
-var config_16 = config_1.getSort;
-
-var require$$0 = ( mocha && undefined ) || mocha;
+const config_2 = config_1.config;
+const config_3 = config_1.setup;
+const config_4 = config_1.setConfigData;
+const config_5 = config_1.getOutputFilepath;
+const config_6 = config_1.getStylesheetFilepath;
+const config_7 = config_1.getCustomScriptFilepath;
+const config_8 = config_1.getPageTitle;
+const config_9 = config_1.getLogo;
+const config_10 = config_1.shouldIncludeFailureMessages;
+const config_11 = config_1.shouldIncludeConsoleLog;
+const config_12 = config_1.shouldUseCssFile;
+const config_13 = config_1.getExecutionTimeWarningThreshold;
+const config_14 = config_1.getTheme;
+const config_15 = config_1.getDateFormat;
+const config_16 = config_1.getSort;
 
 /* eslint no-restricted-syntax: ["error", "FunctionExpression", "WithStatement", "BinaryExpression[operator='in']"] */
 /* eslint prefer-destructuring: ["error", {AssignmentExpression: {array: true}}] */
-
-const Base = require$$0.reporters.Base;
-
 
 
 function JestHtmlReporter(globalConfig, options) {
@@ -750,6 +748,6 @@ function JestHtmlReporter(globalConfig, options) {
 	}
 }
 
-var src = JestHtmlReporter;
+const src = JestHtmlReporter;
 
 module.exports = src;
