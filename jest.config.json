@@ -29,7 +29,8 @@
 				"outputPath": "test-report.html",
 				"includeFailureMsg": true,
 				"includeConsoleLog": true,
-				"sort": "titleAsc"
+				"sort": "titleAsc",
+				"framework": "jest"
 			}
 		]
 	]
