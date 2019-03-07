@@ -30,9 +30,14 @@ function JestHtmlReporter(globalConfig, options) {
 	 */
 	this.jestConfig = globalConfig;
 	this.jestOptions = options;
+	if (!this.jestOptions) {
+		this.jestOptions = {
+			framework: 'jest',
+		};
+	}
 
 	const startTime = Date.now();
-	if (!this.jestOptions || !this.jestOptions.framework || this.jestOptions.framework === 'jest') {
+	if (this.jestOptions.framework && this.jestOptions.framework === 'jest') {
 		this.onRunComplete = (contexts, testResult) => {
 			// Apply the configuration within jest.config.json to the current config
 			config.setConfigData(this.jestOptions);
