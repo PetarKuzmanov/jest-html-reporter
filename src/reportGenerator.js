@@ -1,3 +1,4 @@
+/* eslint no-restricted-syntax: ["error"] */
 
 const fs = require('fs');
 const dateFormat = require('dateformat');
@@ -167,6 +168,29 @@ class ReportGenerator {
 
 				// Test Suite console.logs
 				if (suite.console && suite.console.length > 0 && (this.config.shouldIncludeConsoleLog())) {
+					let beforeAllHook = false;
+					let skipDesc = true;
+					const skipDescribes = [];
+					let testCouter = 0;
+					const beforeAllHooks = suite.console.filter(log => log.message.includes('*** before all start ***'));
+					if (beforeAllHooks.length > 1) {
+						for (const log of suite.console) {
+							if (log.message.includes('*** before all start ***')) {
+								beforeAllHook = true;
+							}
+							if (beforeAllHook && log.message.includes('*** test started ***')) {
+								skipDesc = !failedTests[testCouter];
+								testCouter += 1;
+							}
+							if (log.message.includes('*** after all end ***')) {
+								beforeAllHook = false;
+								skipDescribes.push(skipDesc);
+							}
+						}
+					} else {
+						skipDescribes.push(false);
+					}
+
 					// Console Log Container
 					const consoleLogContainer = htmlOutput.ele('div', { class: 'suite-consolelog', id: `${suiteConsoleLogId}` });
 					// Console Log Header
@@ -178,17 +202,42 @@ class ReportGenerator {
 					let skipLog = false;
 					let logGroup;
 					let logInnerGroup;
+					let hookCounter = 0;
+					let skipDescribe = false;
+					const suiteTitles = [];
 					suite.console.forEach((log) => {
-						if (log.message === '*** test started ***' && !failedTests[counter]) {
-							skipLog = true;
+						if (log.message.includes('*** describe ***')) {
+							suiteTitles.push(log.message.replace('*** describe *** ', ''));
+							return;
+						}
+						if (log.message.includes('*** before all start ***')) {
+							skipDescribe = skipDescribes[hookCounter];
+							hookCounter += 1;
+						}
+						if (log.message === '*** test started ***') {
+							skipLog = !failedTests[counter];
 							counter += 1;
 						}
+						if (skipDescribe) {
+							if (log.message === '*** test ended ***') {
+								skipLog = !failedTests[counter];
+							}
+							return;
+						}
 						if (!skipLog) {
+							if (log.message.includes('*** before') || log.message.includes('*** after')) {
+								const logStartEnd = consoleLogContainer.ele('div', { class: 'suite-consolelog-hooks' });
+								logStartEnd.ele(
+									'pre', { class: 'suite-consolelog-item-message' },
+									stripAnsi(`${log.message}: ${suiteTitles[hookCounter - 1]}`),
+								);
+								return;
+							}
 							if (log.message.includes('*** test started ***') || log.message.includes('*** test ended ***')) {
 								const logStartEnd = consoleLogContainer.ele('div', { class: 'suite-consolelog-test' });
 								logStartEnd.ele(
 									'pre', { class: 'suite-consolelog-item-message' },
-									stripAnsi(`${log.message}: ${testsTitles[counter]}`),
+									stripAnsi(`${log.message}: ${testsTitles[counter - 1]}`),
 								);
 								return;
 							}
@@ -223,8 +272,8 @@ class ReportGenerator {
 								logElement.ele('pre', { class: 'suite-consolelog-item-message' }, stripAnsi(log.message));
 							}
 						}
-						if (log.message === '*** test ended ***' && failedTests[counter]) {
-							skipLog = false;
+						if (log.message === '*** test ended ***') {
+							skipLog = !failedTests[counter];
 						}
 					});
 				}
