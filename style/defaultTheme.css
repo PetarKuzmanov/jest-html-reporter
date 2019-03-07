@@ -133,9 +133,7 @@ header {
 	font-weight: bold;
 }
 .suite-consolelog-item-message {
-	color: #000;
-	font-size: 1rem;
-	padding: 0 0.5rem;
+    color: #000;
 }
 
 .suite-consolelog-inner-group{

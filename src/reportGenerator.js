@@ -264,6 +264,10 @@ class ReportGenerator {
 
 								if (c) {
 									logElementPrev.raw(prettyPrintJson.toHtml(c || log.message));
+								} else if (log.message && log.message.includes('**h1')) {
+									logElementPrev.ele('pre', { class: 'suite-consolelog-item-message', style: 'background-color:#eca2a2;font-size:20px;' }, log.message.replace('**h1', ''));
+								} else if (log.message && log.message.includes('**h2')) {
+									logElementPrev.ele('pre', { class: 'suite-consolelog-item-message', style: 'background-color:#9d9dd0;font-size:17px;' }, log.message.replace('**h2', ''));
 								} else {
 									logElementPrev.ele('pre', { class: 'suite-consolelog-item-message' }, log.message);
 								}
