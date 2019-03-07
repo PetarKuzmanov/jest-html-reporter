@@ -74,14 +74,14 @@ const getLogo = () =>
  * @return {Boolean}
  */
 const shouldIncludeFailureMessages = () =>
-	process.env.JEST_HTML_REPORTER_INCLUDE_FAILURE_MSG || config.includeFailureMsg || false;
+	process.env.JEST_HTML_REPORTER_INCLUDE_FAILURE_MSG || config.includeFailureMsg || true;
 
 /**
  * Returns whether the report should contain console.logs or not
  * @return {Boolean}
  */
 const shouldIncludeConsoleLog = () =>
-	process.env.JEST_HTML_REPORTER_INCLUDE_CONSOLE_LOG || config.includeConsoleLog || false;
+	process.env.JEST_HTML_REPORTER_INCLUDE_CONSOLE_LOG || config.includeConsoleLog || true;
 
 /**
  * Returns whether the report should use a dedicated .css file
