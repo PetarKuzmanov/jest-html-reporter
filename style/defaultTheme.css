@@ -83,7 +83,7 @@ header {
 }
 .suite-table td.test {
 	font-style: italic;
-	width: 60%;
+	width: 80%;
 }
 .suite-table td.test .failureMsg {
 	font-size: 1rem;

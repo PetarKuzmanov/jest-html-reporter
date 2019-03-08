@@ -132,7 +132,12 @@ class ReportGenerator {
 				// Suite Path
 				suiteInfo.ele('div', { class: 'suite-path' }, suite.testFilePath);
 				// Suite execution time
-				const executionTime = (suite.perfStats.end - suite.perfStats.start) / 1000;
+				let executionTime = 0;
+				if (suite.perfStats.start === 0 && suite.perfStats.end === 0 && suite.duration) {
+					executionTime = suite.duration / 1000;
+				} else {
+					executionTime = (suite.perfStats.end - suite.perfStats.start) / 1000;
+				}
 				suiteInfo.ele('div', { class: `suite-time${executionTime > 5 ? ' warn' : ''}` }, `${executionTime}s`);
 
 				// Suite Test Table
@@ -141,8 +146,15 @@ class ReportGenerator {
 				});
 
 				// Test Results
-				const failedTests = suite.testResults.map(test => test.status === 'failed');
-				const testsTitles = suite.testResults.map(test => test.title);
+				const testsInConsoleLog = suite.console.filter(log =>
+					typeof log.message === 'string' && log.message.includes('*** test started ***'));
+				let failedTests = suite.testResults.map(test => test.status === 'failed');
+				let testsTitles = suite.testResults.map(test => test.title);
+				if (testsInConsoleLog.length < failedTests.length) {
+					failedTests = suite.testResults.filter(test => test.status === 'failed' && test.title.includes('@'));
+					failedTests = failedTests.map(test => test.status === 'failed');
+					testsTitles = testsTitles.filter(title => title.includes('@'));
+				}
 				suite.testResults.forEach((test) => {
 					if (test.status !== 'failed') { return; }
 
@@ -172,17 +184,19 @@ class ReportGenerator {
 					let skipDesc = true;
 					const skipDescribes = [];
 					let testCouter = 0;
-					const beforeAllHooks = suite.console.filter(log => log.message.includes('*** before all start ***'));
+					const beforeAllHooks = suite.console.filter(log =>
+						typeof log.message === 'string' && log.message.includes('*** before all start ***'));
 					if (beforeAllHooks.length > 1) {
 						for (const log of suite.console) {
-							if (log.message.includes('*** before all start ***')) {
+							const isMessageString = typeof log.message === 'string';
+							if (isMessageString && log.message.includes('*** before all start ***')) {
 								beforeAllHook = true;
 							}
-							if (beforeAllHook && log.message.includes('*** test started ***')) {
+							if (beforeAllHook && isMessageString && log.message.includes('*** test started ***')) {
 								skipDesc = !failedTests[testCouter];
 								testCouter += 1;
 							}
-							if (log.message.includes('*** after all end ***')) {
+							if (isMessageString && log.message.includes('*** after all end ***')) {
 								beforeAllHook = false;
 								skipDescribes.push(skipDesc);
 							}
@@ -206,34 +220,35 @@ class ReportGenerator {
 					let skipDescribe = false;
 					const suiteTitles = [];
 					suite.console.forEach((log) => {
-						if (log.message.includes('*** describe ***')) {
+						const isMessageString = typeof log.message === 'string';
+						if (isMessageString && log.message.includes('*** describe ***')) {
 							suiteTitles.push(log.message.replace('*** describe *** ', ''));
 							return;
 						}
-						if (log.message.includes('*** before all start ***')) {
+						if (isMessageString && log.message.includes('*** before all start ***')) {
 							skipDescribe = skipDescribes[hookCounter];
 							hookCounter += 1;
 						}
-						if (log.message === '*** test started ***') {
+						if (isMessageString && log.message === '*** test started ***') {
 							skipLog = !failedTests[counter];
 							counter += 1;
 						}
 						if (skipDescribe) {
-							if (log.message === '*** test ended ***') {
-								skipLog = !failedTests[counter];
+							if (isMessageString && log.message === '*** test ended ***') {
+								skipLog = failedTests[counter - 1];
 							}
 							return;
 						}
 						if (!skipLog) {
-							if (log.message.includes('*** before') || log.message.includes('*** after')) {
+							if (isMessageString && (log.message.includes('*** before') || log.message.includes('*** after'))) {
 								const logStartEnd = consoleLogContainer.ele('div', { class: 'suite-consolelog-hooks' });
 								logStartEnd.ele(
 									'pre', { class: 'suite-consolelog-item-message' },
-									stripAnsi(`${log.message}: ${suiteTitles[hookCounter - 1]}`),
+									stripAnsi(`${log.message}: ${suiteTitles[hookCounter - 1] === undefined ? '' : suiteTitles[hookCounter - 1]}`),
 								);
 								return;
 							}
-							if (log.message.includes('*** test started ***') || log.message.includes('*** test ended ***')) {
+							if (isMessageString && (log.message.includes('*** test started ***') || log.message.includes('*** test ended ***'))) {
 								const logStartEnd = consoleLogContainer.ele('div', { class: 'suite-consolelog-test' });
 								logStartEnd.ele(
 									'pre', { class: 'suite-consolelog-item-message' },
@@ -241,7 +256,7 @@ class ReportGenerator {
 								);
 								return;
 							}
-							if (log.message.includes('URL: ')) {
+							if (isMessageString && log.message.includes('URL: ')) {
 								logGroup = consoleLogContainer.ele('div', { class: 'suite-consolelog-group' });
 								const id = `item-message-${index}`;
 								logGroup.ele(
@@ -264,10 +279,16 @@ class ReportGenerator {
 
 								if (c) {
 									logElementPrev.raw(prettyPrintJson.toHtml(c || log.message));
-								} else if (log.message && log.message.includes('**h1')) {
-									logElementPrev.ele('pre', { class: 'suite-consolelog-item-message', style: 'background-color:#eca2a2;font-size:20px;' }, log.message.replace('**h1', ''));
-								} else if (log.message && log.message.includes('**h2')) {
-									logElementPrev.ele('pre', { class: 'suite-consolelog-item-message', style: 'background-color:#9d9dd0;font-size:17px;' }, log.message.replace('**h2', ''));
+								} else if (log.message && isMessageString && log.message.includes('**h1')) {
+									logElementPrev.ele('pre', {
+										class: 'suite-consolelog-item-message',
+										style: 'background-color:#eca2a2;font-size:20px;',
+									}, log.message.replace('**h1', ''));
+								} else if (log.message && isMessageString && log.message.includes('**h2')) {
+									logElementPrev.ele('pre', {
+										class: 'suite-consolelog-item-message',
+										style: 'background-color:#9d9dd0;font-size:17px;',
+									}, log.message.replace('**h2', ''));
 								} else {
 									logElementPrev.ele('pre', { class: 'suite-consolelog-item-message' }, log.message);
 								}
@@ -276,8 +297,8 @@ class ReportGenerator {
 								logElement.ele('pre', { class: 'suite-consolelog-item-message' }, stripAnsi(log.message));
 							}
 						}
-						if (log.message === '*** test ended ***') {
-							skipLog = !failedTests[counter];
+						if (isMessageString && log.message === '*** test ended ***') {
+							skipLog = failedTests[counter - 1];
 						}
 					});
 				}

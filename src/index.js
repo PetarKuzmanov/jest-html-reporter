@@ -82,14 +82,18 @@ function JestHtmlReporter(globalConfig, options) {
 					numPassingTests: 0,
 					numPendingTests: 0,
 					numTodoTests: 0,
-					perfStats: { end: 1551796103758, start: 1551796100962 },
+					perfStats: { end: 0, start: 0 },
 					skipped: true,
 					snapshot: {},
 					sourceMaps: {},
 					testFilePath: suite.file,
 					testResults: [],
+					duration: 0,
 				};
 				for (const test of suite.tests) {
+					if (test.ctx.console) {
+						suitItem.console = test.ctx.console;
+					}
 					const testItem = {
 						ancestorTitles: [suite.title],
 						duration: 0,
@@ -109,6 +113,7 @@ function JestHtmlReporter(globalConfig, options) {
 						testItem.failureMessages.push(test.err.stack);
 					}
 					testResult.numTotalTests += 1;
+					suitItem.duration += test.duration;
 					suitItem.testResults.push(testItem);
 				}
 				testResult.numTotalTestSuites += 1;
