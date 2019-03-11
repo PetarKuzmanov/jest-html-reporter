@@ -49,6 +49,9 @@ function JestHtmlReporter(globalConfig, options) {
 	} else {
 		// if the framework is mocha
 		Base.call(this, this.jestConfig);
+		if (!this.jestOptions.outputPath) {
+			this.jestOptions.outputPath = 'test-report-mocha.html';
+		}
 
 		this.jestConfig.on('end', () => {
 			const testResult = {
@@ -122,6 +125,11 @@ function JestHtmlReporter(globalConfig, options) {
 			}
 			testResult.success = testResult.numFailedTests === 0;
 
+			// Apply the configuration within jest.config.json to the current config
+			config.setConfigData(this.jestOptions);
+			// Apply the updated config
+			reportGenerator.config = config;
+			// Generate Report
 			return reportGenerator.generate({ data: testResult });
 		});
 	}

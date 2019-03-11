@@ -19,18 +19,13 @@ class ReportGenerator {
 	 */
 	generate({ data, ignoreConsole }) {
 		const fileDestination = this.config.getOutputFilepath();
-		const useCssFile = this.config.shouldUseCssFile();
-		let stylesheetPath = null;
 
-		if (useCssFile) {
-			stylesheetPath = this.config.getStylesheetFilepath();
-		}
-
+		const framework = fileDestination.includes('mocha') ? 'mocha' : 'jest';
 		return this.getStylesheetContent()
 			.then(stylesheet => this.renderHtmlReport({
 				data,
 				stylesheet,
-				stylesheetPath,
+				framework,
 			}))
 			.then(xmlBuilderOutput => utils.writeFile({
 				filePath: fileDestination,
@@ -71,7 +66,7 @@ class ReportGenerator {
 	 * @param  {Object} data		The test result data
 	 * @return {xmlbuilder}
 	 */
-	renderHtmlReport({ data, stylesheet, stylesheetPath }) {
+	renderHtmlReport({ data, stylesheet, framework }) {
 		return new Promise((resolve, reject) => {
 			// Make sure that test data was provided
 			if (!data) { return reject(new Error('Test data missing or malformed')); }
@@ -84,7 +79,6 @@ class ReportGenerator {
 			const htmlOutput = utils.createHtmlBase({
 				pageTitle,
 				stylesheet,
-				stylesheetPath,
 			});
 
 			// HEADER
@@ -120,15 +114,24 @@ class ReportGenerator {
 			// Test Suites
 			let index = 0;
 			let suiteIndex = 0;
+			if (framework === 'mocha') {
+				suiteIndex = 9999;
+				index = 9999999;
+			}
+			const allSuites = htmlOutput.ele('div', { class: 'allSuites' });
 			sortedTestData.forEach((suite) => {
 				if (!suite.testResults || suite.testResults.length <= 0) { return; }
 				if (!suite.testResults.find(test => test.status === 'failed')) { return; }
 
+				const suiteElement = allSuites.ele('div', { class: 'suiteElement' });
 				const suiteTableId = `suite-table-${suiteIndex}`;
 				const suiteConsoleLogId = `suite-consolelog-${suiteIndex}`;
 				suiteIndex += 1;
 				// Suite Information
-				const suiteInfo = htmlOutput.ele('div', { class: 'suite-info', onclick: `showHideSuite('${suiteTableId}','${suiteConsoleLogId}')` });
+				const suiteInfo = suiteElement.ele('div', {
+					class: 'suite-info',
+					onclick: `showHideSuite('${suiteTableId}','${suiteConsoleLogId}')`,
+				});
 				// Suite Path
 				suiteInfo.ele('div', { class: 'suite-path' }, suite.testFilePath);
 				// Suite execution time
@@ -141,7 +144,7 @@ class ReportGenerator {
 				suiteInfo.ele('div', { class: `suite-time${executionTime > 5 ? ' warn' : ''}` }, `${executionTime}s`);
 
 				// Suite Test Table
-				const suiteTable = htmlOutput.ele('table', {
+				const suiteTable = suiteElement.ele('table', {
 					class: 'suite-table', cellspacing: '0', cellpadding: '0', id: `${suiteTableId}`,
 				});
 
@@ -206,7 +209,7 @@ class ReportGenerator {
 					}
 
 					// Console Log Container
-					const consoleLogContainer = htmlOutput.ele('div', { class: 'suite-consolelog', id: `${suiteConsoleLogId}` });
+					const consoleLogContainer = suiteElement.ele('div', { class: 'suite-consolelog', id: `${suiteConsoleLogId}` });
 					// Console Log Header
 					const consoleLogHeader = consoleLogContainer.ele('div', { class: 'suite-consolelog-header' }, 'Console Log');
 					consoleLogHeader.ele('button', { class: 'suite-consolelog-show-hide-all', onclick: 'showHideAll()' }, stripAnsi('Show/Hide All'));
