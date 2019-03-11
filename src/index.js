@@ -86,7 +86,7 @@ function JestHtmlReporter(globalConfig, options) {
 					skipped: true,
 					snapshot: {},
 					sourceMaps: {},
-					testFilePath: suite.file,
+					testFilePath: '',
 					testResults: [],
 					duration: 0,
 				};
@@ -115,6 +115,7 @@ function JestHtmlReporter(globalConfig, options) {
 					testResult.numTotalTests += 1;
 					suitItem.duration += test.duration;
 					suitItem.testResults.push(testItem);
+					suitItem.testFilePath = test.file;
 				}
 				testResult.numTotalTestSuites += 1;
 				testResult.testResults.push(suitItem);
