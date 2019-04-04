@@ -259,6 +259,14 @@ class ReportGenerator {
 								);
 								return;
 							}
+							if (isMessageString && log.message.includes('***h3 INFO')) {
+								const logInfo = consoleLogContainer.ele('div', { class: 'suite-consolelog-info' });
+								logInfo.ele('pre', {
+									class: 'suite-consolelog-info-message',
+									style: 'background-color:#42F500;font-size:12px;margin:0px 10px;',
+								}, log.message.replace('***h3', ''));
+								return;
+							}
 							if (isMessageString && log.message.includes('URL: ')) {
 								logGroup = consoleLogContainer.ele('div', { class: 'suite-consolelog-group' });
 								const id = `item-message-${index}`;
