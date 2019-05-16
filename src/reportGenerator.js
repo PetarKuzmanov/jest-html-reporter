@@ -7,7 +7,7 @@ const utils = require('./utils');
 const sorting = require('./sorting');
 const prettyPrintJson = require('pretty-print-json');
 const xmlbuilder = require('xmlbuilder');
-const Chart = require('chart.js');
+// const Chart = require('chart.js');
 
 class ReportGenerator {
 	constructor(config) {
