@@ -6,6 +6,8 @@ const stripAnsi = require('strip-ansi');
 const utils = require('./utils');
 const sorting = require('./sorting');
 const prettyPrintJson = require('pretty-print-json');
+const xmlbuilder = require('xmlbuilder');
+const Chart = require('chart.js');
 
 class ReportGenerator {
 	constructor(config) {
@@ -105,6 +107,17 @@ class ReportGenerator {
 				${data.numPendingTests} pending
 			`);
 
+			// const chartElement = metaDataContainer.ele('canvas').att('style', 'width:400;height:400;');
+			// const myDoughnutChart = new Chart(chartElement, {
+			// 	type: 'doughnut',
+			// 	data: {
+			// 		datasets: [{
+			// 			data: [data.numPassedTests, data.numFailedTests, data.numPendingTests],
+			// 		}],
+			// 		labels: ['Passed', 'Failed', 'Pending'],
+			// 	},
+			// });
+
 			// Apply the configured sorting of test data
 			const sortedTestData = sorting.sortSuiteResults({
 				testData: data.testResults,
@@ -125,13 +138,25 @@ class ReportGenerator {
 
 				const suiteElement = allSuites.ele('div', { class: 'suiteElement' });
 				const suiteTableId = `suite-table-${suiteIndex}`;
+				const arrowSuiteTableId = `arrow-${suiteIndex}`;
 				const suiteConsoleLogId = `suite-consolelog-${suiteIndex}`;
 				suiteIndex += 1;
 				// Suite Information
 				const suiteInfo = suiteElement.ele('div', {
 					class: 'suite-info',
-					onclick: `showHideSuite('${suiteTableId}','${suiteConsoleLogId}')`,
 				});
+				const arrow = xmlbuilder.create('div')
+					.ele('div', {
+						class: 'circleArrow',
+						onclick: `showHideSuite('${suiteTableId}','${suiteConsoleLogId}', '${arrowSuiteTableId}')`,
+					})
+					.ele('arrow', {
+						id: `${arrowSuiteTableId}`,
+						class: 'arrowRight',
+					});
+				const space = xmlbuilder.create('div').ele('pre', {}, ' ');
+				suiteInfo.importDocument(arrow);
+				suiteInfo.importDocument(space);
 				// Suite Path
 				suiteInfo.ele('div', { class: 'suite-path' }, suite.testFilePath);
 				// Suite execution time
@@ -270,10 +295,21 @@ class ReportGenerator {
 							if (isMessageString && log.message.includes('URL: ')) {
 								logGroup = consoleLogContainer.ele('div', { class: 'suite-consolelog-group' });
 								const id = `item-message-${index}`;
-								logGroup.ele(
-									'pre', { class: 'suite-consolelog-group-show-hide', onclick: `showHide('${id}')` },
-									stripAnsi(log.message),
-								);
+								const arrowUrlId = `arrowUrl-${index}`;
+								const arrowUrl = xmlbuilder.create('div')
+									.ele('div', {
+										class: 'circleArrow',
+										onclick: `showHideUrlData('${id}', '${arrowUrlId}')`,
+									})
+									.ele('arrow', {
+										id: `${arrowUrlId}`,
+										class: 'arrowRight',
+									});
+								const urlElement = xmlbuilder.create('div').att('style', 'display:flex;background-color:lightcyan;');
+								urlElement.importDocument(arrowUrl);
+								urlElement.ele('pre').att('class', 'suite-consolelog-group-show-hide').txt(stripAnsi(log.message));
+								logGroup.importDocument(urlElement);
+
 								logInnerGroup = logGroup.ele('div', { class: 'suite-consolelog-inner-group', id: `${id}` });
 								index += 1;
 								return;

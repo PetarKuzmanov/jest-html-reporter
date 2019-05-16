@@ -78,8 +78,18 @@ const createHtmlBase = ({ pageTitle, stylesheet }) => {
 		'{ element.style.display = "none";' +
 		'} else { ' +
 		'element.style.display = "block"; }}}' +
-		'function showHideSuite(tableId, consoleLogId){' +
-		'showHide(tableId); showHide(consoleLogId);}',
+		'function showHideSuite(tableId, consoleLogId, arrowId){' +
+		'showHide(tableId); showHide(consoleLogId); switchArrow(arrowId);}' +
+		'function switchArrow(id){' +
+			'var element = document.getElementById(id);' +
+			'if (element.classList.contains("arrowDown")){' +
+				'element.classList.remove("arrowDown");' +
+				'element.classList.add("arrowRight");' +
+			'} else {' +
+				'element.classList.remove("arrowRight");' +
+				'element.classList.add("arrowDown");}}' +
+		'function showHideUrlData(item, arrowId) {' +
+			'showHide(item); switchArrow(arrowId); }',
 	};
 
 	return xmlbuilder.create(htmlBase);
