@@ -286,10 +286,34 @@ class ReportGenerator {
 							}
 							if (isMessageString && log.message.includes('***h3 INFO')) {
 								const logInfo = consoleLogContainer.ele('div', { class: 'suite-consolelog-info' });
-								logInfo.ele('pre', {
-									class: 'suite-consolelog-info-message',
-									style: 'background-color:#42F500;font-size:12px;margin:0px 10px;',
-								}, log.message.replace('***h3', ''));
+								const messages = log.message.split(' ');
+								const messageObject = messages[messages.length - 1];
+
+								let c;
+								try {
+									c = JSON.parse(messageObject);
+								} catch (e) {
+									//
+								}
+
+								if (c) {
+									log.message = log.message.replace(messageObject, '');
+									logInfo.ele('pre', {
+										class: 'suite-consolelog-info-message',
+										style: 'background-color:#fffff0;font-size:12px;margin:0px 10px;',
+									}, log.message.replace('***h3', ''));
+									const logElementPrev = logInfo.ele('pre', {
+										class: 'suite-consolelog-info-message',
+										style: 'background-color:#fffff0;font-size:12px;margin:0px 10px;padding-left:10px;',
+									});
+									logElementPrev.raw(prettyPrintJson.toHtml(c || messageObject));
+								} else {
+									logInfo.ele('pre', {
+										class: 'suite-consolelog-info-message',
+										style: 'background-color:#fffff0;font-size:12px;margin:0px 10px;',
+									}, log.message.replace('***h3', ''));
+								}
+
 								return;
 							}
 							if (isMessageString && log.message.includes('URL: ')) {
