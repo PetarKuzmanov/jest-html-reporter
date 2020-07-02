@@ -33,7 +33,7 @@ const writeFile = ({ filePath, content }) => new Promise((resolve, reject) => {
 		if (mkdirpError) {
 			return reject(new Error(`Something went wrong when creating the folder: ${mkdirpError}`));
 		}
-		return fs.writeFile(filePath, content, (writeFileError) => {
+		return fs.writeFile(filePath, content.toString(), (writeFileError) => {
 			if (writeFileError) {
 				return reject(new Error(`Something went wrong when creating the file: ${writeFileError}`));
 			}

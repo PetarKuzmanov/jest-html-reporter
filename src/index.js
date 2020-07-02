@@ -30,6 +30,9 @@ function JestHtmlReporter(globalConfig, options) {
 	 */
 	this.jestConfig = globalConfig;
 	this.jestOptions = options;
+    if (options && options.reporterOptions) {
+        this.jestOptions = options.reporterOptions;
+    }
 	if (!this.jestOptions) {
 		this.jestOptions = {
 			framework: 'jest',
